@@ -1,44 +1,61 @@
 <template>
-  <div v-if="show" class="modal-backdrop">
-    <div class="modal-dialog modal-xl">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Cadastrar Nova Mesa</h5>
-          <button type="button" class="close" @click="$emit('close')">
-            <span>&times;</span>
-          </button>
-        </div>
+  <div>
+    <Loading 
+      :show="loading" 
+      :message="loadingMessage" 
+    />
 
-        <div class="modal-body">
-          <form>
-            <div class="form-group">
-              <label for="numeroMesa">Número da Mesa</label>
-              <input 
-                type="number" 
-                class="form-control" 
-                id="numeroMesa" 
-                v-model="mesa.deskNumber"
-              />
-            </div>
-            <div class="form-group">
-              <label for="nomeMesa">Nome da Mesa</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                id="nomeMesa" 
-                v-model="mesa.deskName"
-              />
-            </div>
-          </form>
-        </div>
+    <div v-if="show" class="modal-backdrop">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Cadastrar Nova Mesa</h5>
+            <button type="button" class="close" @click="$emit('close')">
+              <span>&times;</span>
+            </button>
+          </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="$emit('close')">
-            Cancelar
-          </button>
-          <button type="button" class="btn btn-primary" @click="salvarMesa">
-            Salvar
-          </button>
+          <div class="modal-body">
+            <form>
+              <div class="form-group">
+                <label for="numeroMesa">Número da Mesa</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  id="numeroMesa" 
+                  v-model="mesa.deskNumber"
+                  :disabled="loading"/>
+              </div>
+              <div class="form-group">
+                <label for="nomeMesa">Nome da Mesa</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="nomeMesa" 
+                  v-model="mesa.deskName"
+                  :disabled="loading">
+              </div>
+            </form>
+          </div>
+
+          <div class="modal-footer">
+            <button 
+              type="button" 
+              class="btn btn-secondary" 
+              @click="$emit('close')"
+              :disabled="loading"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-primary" 
+              @click="salvarMesa"
+              :disabled="loading">
+              <span v-if="loading">Salvando...</span>
+              <span v-else>Salvar</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -55,6 +72,8 @@ export default {
   },
   data() {
     return {
+      loading: false,
+      loadingMessage: "Salvando mesa...",
       mesa: {
         deskNumber: "",
         deskName: ""
@@ -63,31 +82,43 @@ export default {
   },
   methods: {
     async salvarMesa() {
-        try {
-            const response = await axios.post(
-                "http://localhost/projetos/cowork-project-back/public/desks", 
-                this.mesa,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    timeout: 10000
-                }
-            );
-            console.log('Sucesso:', response.data);
-        } catch (error) {
-            console.error('Erro completo:', error);
-            
-            // Teste se a URL está acessível
-            try {
-                const testResponse = await fetch("http://localhost/projetos/cowork-project-back/public/desks", {
-                    method: 'GET'
-                });
-                console.log('Teste URL status:', testResponse.status);
-            } catch (testError) {
-                console.error('Teste URL falhou:', testError);
-            }
+      this.loading = true;
+      this.loadingMessage = "Salvando mesa...";
+
+      try {
+        const response = await axios.post("http://localhost/projetos/cowork-project-back/public/desks", this.mesa, {
+            headers: {
+              'Content-Type': 'application/json',
+            }, timeout: 10000
+          }
+        );
+        
+        console.log('Sucesso:', response.data);
+        this.$emit('close');
+        this.$emit('mesa-salva');
+        
+      } catch (error) {
+        console.error('Erro completo:', error);
+        
+        if (error.response) {
+          const status = error.response.status;
+          const message = error.response.data.message || 'Erro desconhecido';
+          
+          if (status === 409) {
+            alert('Erro: ' + message);
+          } else if (status === 400) {
+            alert('Erro: ' + message);
+          } else {
+            alert('Erro ao salvar mesa: ' + message);
+          }
+        } else if (error.request) {
+          alert('Erro: Não foi possível conectar ao servidor');
+        } else {
+          alert('Erro: ' + error.message);
         }
+      } finally {
+        this.loading = false;
+      }
     }
   }
 };

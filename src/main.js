@@ -18,9 +18,14 @@ import App from "./App";
 // TIP: change to import router from "./router/starterRouter"; to start with a clean layout
 import router from "./router/index";
 
+import Loading from './components/Loading.vue'
+
 import BlackDashboard from "./plugins/blackDashboard";
 import i18n from "./i18n";
 import "./registerServiceWorker";
+
+Vue.component('Loading', Loading);
+
 Vue.use(BlackDashboard);
 Vue.use(VueRouter);
 Vue.use(RouterPrefetch);
