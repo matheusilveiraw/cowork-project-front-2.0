@@ -146,7 +146,6 @@ export default {
                     `http://localhost/projetos/cowork-project-back/public/customers/${cliente.idCustomer}`
                 );
 
-                // Mostra mensagem de sucesso
                 Swal.fire({
                     title: 'Excluído!',
                     text: 'Cliente excluído com sucesso.',
@@ -155,16 +154,22 @@ export default {
                     showConfirmButton: false
                 });
 
-                // Atualiza a lista de clientes
                 this.buscarClientes();
 
             } catch (error) {
                 console.error('Erro ao excluir cliente:', error);
+                
+                let errorMessage = 'Erro ao excluir cliente: ' + (error.response?.data?.message || error.message);
+                
+                if (error.response?.status === 409) {
+                    errorMessage = error.response.data.error;
+                }
+
                 Swal.fire({
                     title: 'Erro!',
-                    text: 'Erro ao excluir cliente: ' + (error.response?.data?.message || error.message),
+                    html: errorMessage,
                     icon: 'error',
-                    confirmButtonText: 'OK'
+                    confirmButtonText: 'Entendi'
                 });
             }
         },
