@@ -2,28 +2,17 @@
   <div>
     <Loading :show="loading" :message="loadingMessage" />
 
-    <base-alert 
-      v-if="showSuccessAlert" 
-      type="info" 
-      dismissible 
-      with-icon
-      @dismiss="showSuccessAlert = false"
-    >
+    <base-alert v-if="showSuccessAlert" type="info" dismissible with-icon class="success-alert"
+      @dismiss="showSuccessAlert = false">
       <span data-notify="icon" class="tim-icons icon-bell-55"></span>
       <span data-notify="message">Mesa salva com sucesso!</span>
     </base-alert>
 
-    <base-alert 
-      v-if="showErrorAlert" 
-      type="danger" 
-      dismissible 
-      with-icon
-      @dismiss="showErrorAlert = false"
-    >
+    <base-alert v-if="showErrorAlert" type="danger" dismissible with-icon class="modal-alert"
+      @dismiss="showErrorAlert = false">
       <span data-notify="icon" class="tim-icons icon-alert-circle-exc"></span>
       <span data-notify="message">{{ errorMessage }}</span>
     </base-alert>
-
 
     <div v-if="show" class="modal-backdrop">
       <div class="modal-dialog modal-xl">
@@ -70,7 +59,7 @@ import { BaseAlert } from "@/components";
 
 export default {
   name: "ModalCadastroMesas",
-    components: { 
+  components: {
     BaseAlert
   },
   props: {
@@ -98,7 +87,7 @@ export default {
 
       try {
         const response = await axios.post(
-          "http://localhost/projetos/cowork-project-back/public/desks", 
+          "http://localhost/projetos/cowork-project-back/public/desks",
           this.mesa,
           {
             headers: {
@@ -107,25 +96,25 @@ export default {
             timeout: 10000
           }
         );
-        
+
         console.log('Sucesso:', response.data);
-        
-        // Mostra alerta de sucesso
+
         this.showSuccessAlert = true;
-        
-        // Fecha o modal após 2 segundos
+        this.fecharModal();
+
         setTimeout(() => {
-          this.fecharModal();
-          this.$emit('mesa-salva');
-        }, 2000);
-        
+          this.showSuccessAlert = false;
+        }, 3000);
+
+        this.$emit('mesa-salva');
+
       } catch (error) {
         console.error('Erro completo:', error);
-        
+
         if (error.response) {
           const status = error.response.status;
           const message = error.response.data.message || 'Erro desconhecido';
-          
+
           if (status === 409) {
             this.errorMessage = 'Já existe uma mesa com este número. Escolha outro número.';
           } else if (status === 400) {
@@ -138,17 +127,15 @@ export default {
         } else {
           this.errorMessage = 'Erro: ' + error.message;
         }
-        
+
         this.showErrorAlert = true;
-        
+
       } finally {
         this.loading = false;
       }
     },
-    
+
     fecharModal() {
-      // Reseta os estados antes de fechar
-      this.showSuccessAlert = false;
       this.showErrorAlert = false;
       this.errorMessage = "";
       this.mesa.deskNumber = "";
@@ -156,12 +143,10 @@ export default {
       this.$emit('close');
     }
   },
-  
+
   watch: {
     show(newVal) {
       if (!newVal) {
-        // Quando o modal fecha, reseta os alertas
-        this.showSuccessAlert = false;
         this.showErrorAlert = false;
         this.errorMessage = "";
       }
@@ -191,5 +176,41 @@ export default {
 .modal-content .form-control {
   color: #000 !important;
   background-color: #fff;
+}
+
+.success-alert {
+  position: fixed !important;
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 1060 !important;
+  min-width: 400px !important;
+  max-width: 500px !important;
+  text-align: center !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  border: none !important;
+}
+
+.modal-alert {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 1060 !important;
+  min-width: 400px !important;
+  max-width: 500px !important;
+  text-align: center !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  border: none !important;
+}
+
+.success-alert .alert,
+.modal-alert .alert {
+  margin-bottom: 0 !important;
+  border-radius: 10px !important;
+}
+
+.loading-overlay {
+  z-index: 1070 !important;
 }
 </style>
