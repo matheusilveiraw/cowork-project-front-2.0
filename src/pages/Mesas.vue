@@ -18,17 +18,14 @@
       </div>
 
       <div class="card-body">
-        <!-- Loading enquanto busca as mesas -->
         <div v-if="loading" class="text-center">
           <p>Carregando mesas...</p>
         </div>
 
-        <!-- Mensagem quando não há mesas -->
         <div v-else-if="mesas.length === 0" class="text-center">
           <p>Nenhuma mesa cadastrada. Clique em "Nova Mesa" para começar.</p>
         </div>
 
-        <!-- Lista de mesas do backend -->
         <div v-else class="row">
           <div class="col-md-6 mb-3" v-for="mesa in mesas" :key="mesa.id">
             <div class="mesa-box p-3">
@@ -79,9 +76,6 @@ export default {
         
         console.log('Mesas carregadas:', response.data);
         
-        // Ajuste conforme a estrutura da sua resposta
-        // Se a resposta for { data: [...] } use response.data.data
-        // Se for direto o array use response.data
         this.mesas = response.data.data || response.data || [];
         
       } catch (error) {
@@ -93,7 +87,6 @@ export default {
     }
   },
   mounted() {
-    // Busca as mesas quando o componente é carregado
     this.buscarMesas();
   }
 };
