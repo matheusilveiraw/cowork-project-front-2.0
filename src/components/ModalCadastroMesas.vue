@@ -5,7 +5,7 @@
     <base-alert v-if="showSuccessAlert" type="info" dismissible with-icon class="success-alert"
       @dismiss="showSuccessAlert = false">
       <span data-notify="icon" class="tim-icons icon-bell-55"></span>
-      <span data-notify="message">Mesa salva com sucesso!</span>
+      <span data-notify="message">{{ mensagemSucesso }}</span>
     </base-alert>
 
     <base-alert v-if="showErrorAlert" type="danger" dismissible with-icon class="modal-alert"
@@ -18,8 +18,8 @@
       <div class="modal-dialog modal-xl">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Cadastrar Nova Mesa</h5>
-            <button type="button" class="close" @click="$emit('close')">
+            <h5 class="modal-title">{{ tituloModal }}</h5>
+            <button type="button" class="close" @click="fecharModal">
               <span>&times;</span>
             </button>
           </div>
@@ -39,12 +39,12 @@
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="$emit('close')" :disabled="loading">
+            <button type="button" class="btn btn-secondary" @click="fecharModal" :disabled="loading">
               Cancelar
             </button>
             <button type="button" class="btn btn-primary" @click="salvarMesa" :disabled="loading">
-              <span v-if="loading">Salvando...</span>
-              <span v-else>Salvar</span>
+              <span v-if="loading">{{ textoBotaoSalvar }}</span>
+              <span v-else>{{ textoBotao }}</span>
             </button>
           </div>
         </div>
@@ -63,41 +63,104 @@ export default {
     BaseAlert
   },
   props: {
-    show: Boolean
+    show: Boolean,
+    mesaEditando: {
+      type: Object,
+      default: null
+    }
   },
   data() {
     return {
       loading: false,
-      loadingMessage: "Salvando mesa...",
+      loadingMessage: "",
       showSuccessAlert: false,
       showErrorAlert: false,
       errorMessage: "",
+      mensagemSucesso: "",
       mesa: {
         deskNumber: "",
         deskName: ""
       }
     };
   },
+  computed: {
+    tituloModal() {
+      return this.mesaEditando ? 'Editar Mesa' : 'Cadastrar Nova Mesa';
+    },
+    textoBotao() {
+      return this.mesaEditando ? 'Atualizar' : 'Salvar';
+    },
+    textoBotaoSalvar() {
+      return this.mesaEditando ? 'Atualizando...' : 'Salvando...';
+    }
+  },
+  watch: {
+    mesaEditando: {
+      handler(novaMesa) {
+        if (novaMesa) {
+          this.mesa = {
+            idDesk: novaMesa.idDesk,
+            deskNumber: novaMesa.deskNumber,
+            deskName: novaMesa.deskName
+          };
+        } else {
+          this.mesa = {
+            deskNumber: "",
+            deskName: ""
+          };
+        }
+      },
+      immediate: true
+    },
+    show(newVal) {
+      if (!newVal) {
+        this.showErrorAlert = false;
+        this.errorMessage = "";
+      }
+    }
+  },
   methods: {
     async salvarMesa() {
       this.loading = true;
-      this.loadingMessage = "Salvando mesa...";
+      this.loadingMessage = this.mesaEditando ? "Atualizando mesa..." : "Salvando mesa...";
       this.showSuccessAlert = false;
       this.showErrorAlert = false;
 
       try {
-        const response = await axios.post(
-          "http://localhost/projetos/cowork-project-back/public/desks",
-          this.mesa,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            timeout: 10000
-          }
-        );
+        let response;
+        let mesaId;
 
-        console.log('Sucesso:', response.data);
+        if (this.mesaEditando) {
+          mesaId = this.mesaEditando.idDesk || this.mesa.idDesk;
+
+          if (!mesaId) {
+            throw new Error('ID da mesa não encontrado para edição');
+          }
+
+          response = await axios.put(
+            `http://localhost/projetos/cowork-project-back/public/desks/${mesaId}`,
+            this.mesa,
+            {
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              timeout: 10000
+            }
+          );
+          this.mensagemSucesso = "Mesa atualizada com sucesso!";
+        } else {
+          response = await axios.post(
+            "http://localhost/projetos/cowork-project-back/public/desks",
+            this.mesa,
+            {
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              timeout: 10000
+            }
+          );
+          this.mensagemSucesso = "Mesa salva com sucesso!";
+        }
 
         this.showSuccessAlert = true;
         this.fecharModal();
@@ -120,7 +183,7 @@ export default {
           } else if (status === 400) {
             this.errorMessage = 'Dados inválidos. Verifique os campos preenchidos.';
           } else {
-            this.errorMessage = 'Erro ao salvar mesa: ' + message;
+            this.errorMessage = `Erro ao ${this.mesaEditando ? 'atualizar' : 'salvar'} mesa: ` + message;
           }
         } else if (error.request) {
           this.errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão.';
@@ -138,18 +201,11 @@ export default {
     fecharModal() {
       this.showErrorAlert = false;
       this.errorMessage = "";
-      this.mesa.deskNumber = "";
-      this.mesa.deskName = "";
+      this.mesa = {
+        deskNumber: "",
+        deskName: ""
+      };
       this.$emit('close');
-    }
-  },
-
-  watch: {
-    show(newVal) {
-      if (!newVal) {
-        this.showErrorAlert = false;
-        this.errorMessage = "";
-      }
     }
   }
 };
