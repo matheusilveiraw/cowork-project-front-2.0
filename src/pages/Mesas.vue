@@ -35,9 +35,14 @@
                     Mesa {{ mesa.deskNumber }} - {{ mesa.deskName || 'Mesa sem nome' }}
                   </strong>
                 </h1>
-                <button class="btn btn-sm btn-outline-primary" @click="abrirModalEdicao(mesa)" title="Editar mesa">
-                  <i class="tim-icons icon-pencil"></i>
-                </button>
+                <div>
+                  <button class="btn btn-sm btn-outline-primary mr-1" @click="abrirModalEdicao(mesa)" title="Editar mesa">
+                    <i class="tim-icons icon-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" @click="confirmarExclusao(mesa)" title="Excluir mesa">
+                    <i class="tim-icons icon-simple-remove"></i>
+                  </button>
+                </div>
               </div>
               <p class="mt-2 mb-1">Cliente: nome do cliente</p>
               <p class="mb-0">Último dia de aluguel: 01/01/2026</p>
@@ -47,14 +52,19 @@
       </div>
     </div>
 
-    <ModalCadastroMesas :show="abrirModal" :mesa-editando="mesaEditando" @close="fecharModal"
-      @mesa-salva="buscarMesas" />
+    <ModalCadastroMesas 
+      :show="abrirModal" 
+      :mesa-editando="mesaEditando" 
+      @close="fecharModal"
+      @mesa-salva="buscarMesas" 
+    />
   </div>
 </template>
 
 <script>
 import ModalCadastroMesas from "@/components/ModalCadastroMesas.vue";
 import axios from "axios";
+import Swal from 'sweetalert2';
 
 export default {
   name: "Mesas",
@@ -81,7 +91,7 @@ export default {
 
       } catch (error) {
         console.error('Erro ao buscar mesas:', error);
-        alert('Erro ao carregar mesas: ' + (error.response?.data?.message || error.message));
+        this.mostrarErro('Erro ao carregar mesas: ' + (error.response?.data?.message || error.message));
       } finally {
         this.loading = false;
       }
@@ -100,11 +110,66 @@ export default {
       };
       this.abrirModal = true;
     },
+
+    async confirmarExclusao(mesa) {
+      const result = await Swal.fire({
+        title: 'Confirmar Exclusão',
+        html: `Tem certeza que deseja excluir a mesa <strong>"Mesa ${mesa.deskNumber} - ${mesa.deskName || 'Mesa sem nome'}"</strong>?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sim, excluir!',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      });
+
+      if (result.isConfirmed) {
+        await this.excluirMesa(mesa);
+      }
+    },
+
+    async excluirMesa(mesa) {
+      try {
+        await axios.delete(
+          `http://localhost/projetos/cowork-project-back/public/desks/${mesa.idDesk}`
+        );
+
+        // Mostra mensagem de sucesso
+        Swal.fire({
+          title: 'Excluído!',
+          text: 'Mesa excluída com sucesso.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
+
+        // Atualiza a lista de mesas
+        this.buscarMesas();
+
+      } catch (error) {
+        console.error('Erro ao excluir mesa:', error);
+        Swal.fire({
+          title: 'Erro!',
+          text: 'Erro ao excluir mesa: ' + (error.response?.data?.message || error.message),
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
+    },
+
     fecharModal() {
       this.abrirModal = false;
       this.mesaEditando = null;
-      this.$nextTick(() => {
-        this.mesaEditando = null;
+    },
+
+    mostrarErro(mensagem) {
+      this.$notify({
+        type: 'danger',
+        message: mensagem,
+        icon: 'tim-icons icon-alert-circle-exc',
+        horizontalAlign: 'right',
+        verticalAlign: 'top'
       });
     }
   },
