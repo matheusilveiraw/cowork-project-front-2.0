@@ -8,7 +8,7 @@
       <div class="menu-rentals">
         <div class="d-flex mb-3 ml-3">
           <button class="btn btn-primary mr-2" @click="abrirModalCadastro">
-            Nova Mesa fdf
+            Nova Mesa
           </button>
 
           <button class="btn btn-secondary">
