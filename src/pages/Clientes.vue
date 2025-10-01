@@ -22,44 +22,74 @@
                     <p>Nenhum cliente cadastrado. Clique em "Novo cliente" para começar.</p>
                 </div>
 
-                <div v-else class="table-responsive">
-                    <table class="table table-striped table-hover">
-                        <thead class="thead-dark">
-                            <tr>
-                                <th>ID</th>
-                                <th>Nome</th>
-                                <th>Email</th>
-                                <th>Telefone</th>
-                                <th>Endereço</th>
-                                <th>Data de Cadastro</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="cliente in clientes" :key="cliente.idCustomer">
-                                <td>{{ cliente.idCustomer }}</td>
-                                <td>
-                                    <strong>{{ cliente.nameCustomer }}</strong>
-                                </td>
-                                <td>{{ cliente.emailCustomer }}</td>
-                                <td>{{ cliente.phoneCustomer || '-' }}</td>
-                                <td>{{ cliente.addressCustomer || '-' }}</td>
-                                <td>{{ formatarData(cliente.created_at) }}</td>
-                                <td>
-                                    <div class="btn-group-actions">
-                                        <button class="btn btn-sm btn-outline-primary"
-                                            @click="abrirModalEdicao(cliente)" title="Editar cliente">
-                                            <i class="tim-icons icon-pencil"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger"
-                                            @click="confirmarExclusao(cliente)" title="Excluir cliente">
-                                            <i class="tim-icons icon-simple-remove"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div v-else>
+                    <!-- Tabela -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>Telefone</th>
+                                    <th>Endereço</th>
+                                    <th>Data de Cadastro</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="cliente in clientesPagina" :key="cliente.idCustomer">
+                                    <td>{{ cliente.idCustomer }}</td>
+                                    <td>
+                                        <strong>{{ cliente.nameCustomer }}</strong>
+                                    </td>
+                                    <td>{{ cliente.emailCustomer }}</td>
+                                    <td>{{ cliente.phoneCustomer || '-' }}</td>
+                                    <td>{{ cliente.addressCustomer || '-' }}</td>
+                                    <td>{{ formatarData(cliente.created_at) }}</td>
+                                    <td>
+                                        <div class="btn-group-actions">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                @click="abrirModalEdicao(cliente)" title="Editar cliente">
+                                                <i class="tim-icons icon-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                @click="confirmarExclusao(cliente)" title="Excluir cliente">
+                                                <i class="tim-icons icon-simple-remove"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação Simples -->
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <small class="text-muted">
+                            Mostrando {{ inicio + 1 }}-{{ fim }} de {{ clientes.length }} clientes
+                        </small>
+                        
+                        <div class="pagination-simple">
+                            <button 
+                                class="btn btn-sm btn-outline-secondary me-2" 
+                                @click="paginaAnterior"
+                                :disabled="paginaAtual === 1"
+                            >
+                                ‹ Anterior
+                            </button>
+                            
+                            <span class="mx-2">Página {{ paginaAtual }} de {{ totalPaginas }}</span>
+                            
+                            <button 
+                                class="btn btn-sm btn-outline-secondary ms-2" 
+                                @click="proximaPagina"
+                                :disabled="paginaAtual === totalPaginas"
+                            >
+                                Próxima ›
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -89,8 +119,34 @@ export default {
             abrirModal: false,
             clienteEditando: null,
             clientes: [],
-            loading: false
+            loading: false,
+            paginaAtual: 1,
+            clientesPorPagina: 10
         };
+    },
+    computed: {
+        // Clientes da página atual
+        clientesPagina() {
+            const inicio = (this.paginaAtual - 1) * this.clientesPorPagina;
+            const fim = inicio + this.clientesPorPagina;
+            return this.clientes.slice(inicio, fim);
+        },
+        
+        // Total de páginas
+        totalPaginas() {
+            return Math.ceil(this.clientes.length / this.clientesPorPagina);
+        },
+        
+        // Índice do primeiro cliente da página
+        inicio() {
+            return (this.paginaAtual - 1) * this.clientesPorPagina;
+        },
+        
+        // Índice do último cliente da página
+        fim() {
+            const fimCalculado = this.inicio + this.clientesPorPagina;
+            return fimCalculado > this.clientes.length ? this.clientes.length : fimCalculado;
+        }
     },
     methods: {
         async buscarClientes() {
@@ -101,6 +157,8 @@ export default {
                 );
 
                 this.clientes = response.data.data || response.data || [];
+                // Reseta para a primeira página após carregar
+                this.paginaAtual = 1;
 
             } catch (error) {
                 console.error('Erro ao buscar clientes:', error);
@@ -174,6 +232,19 @@ export default {
             }
         },
 
+        // Métodos de paginação
+        proximaPagina() {
+            if (this.paginaAtual < this.totalPaginas) {
+                this.paginaAtual++;
+            }
+        },
+
+        paginaAnterior() {
+            if (this.paginaAtual > 1) {
+                this.paginaAtual--;
+            }
+        },
+
         formatarData(data) {
             if (!data) return '-';
             return new Date(data).toLocaleDateString('pt-BR');
@@ -239,6 +310,17 @@ export default {
     margin: 0 2px;
 }
 
+/* Estilos da paginação */
+.pagination-simple {
+    display: flex;
+    align-items: center;
+}
+
+.pagination-simple .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
     .table-responsive {
         font-size: 0.875rem;
@@ -247,6 +329,16 @@ export default {
     .table th,
     .table td {
         padding: 8px 6px;
+    }
+    
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .pagination-simple {
+        justify-content: center;
     }
 }
 </style>
