@@ -135,7 +135,6 @@ export default {
           `http://localhost/projetos/cowork-project-back/public/desks/${mesa.idDesk}`
         );
 
-        // Mostra mensagem de sucesso
         Swal.fire({
           title: 'Excluído!',
           text: 'Mesa excluída com sucesso.',
@@ -144,7 +143,6 @@ export default {
           showConfirmButton: false
         });
 
-        // Atualiza a lista de mesas
         this.buscarMesas();
 
       } catch (error) {
