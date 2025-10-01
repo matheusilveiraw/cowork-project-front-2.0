@@ -77,7 +77,7 @@
 <script>
 import axios from "axios";
 // import ModalCadastroClientes from "@/components/ModalCadastroClientes.vue"; // Para uso futuro
-// import Swal from 'sweetalert2'; // Para uso futuro
+import Swal from 'sweetalert2';
 
 export default {
     name: "Clientes",
@@ -122,8 +122,51 @@ export default {
             // this.abrirModal = true;
         },
 
-        confirmarExclusao(cliente) {
-            console.log('Confirmar exclusão - funcionalidade futura', cliente);
+        async confirmarExclusao(cliente) {
+            const result = await Swal.fire({
+                title: 'Confirmar Exclusão',
+                html: `Tem certeza que deseja excluir o cliente <strong>"${cliente.nameCustomer}"</strong>?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sim, excluir!',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true
+            });
+
+            if (result.isConfirmed) {
+                await this.excluirCliente(cliente);
+            }
+        },
+
+        async excluirCliente(cliente) {
+            try {
+                await axios.delete(
+                    `http://localhost/projetos/cowork-project-back/public/customers/${cliente.idCustomer}`
+                );
+
+                // Mostra mensagem de sucesso
+                Swal.fire({
+                    title: 'Excluído!',
+                    text: 'Cliente excluído com sucesso.',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+
+                // Atualiza a lista de clientes
+                this.buscarClientes();
+
+            } catch (error) {
+                console.error('Erro ao excluir cliente:', error);
+                Swal.fire({
+                    title: 'Erro!',
+                    text: 'Erro ao excluir cliente: ' + (error.response?.data?.message || error.message),
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
         },
 
         formatarData(data) {
@@ -132,7 +175,13 @@ export default {
         },
 
         mostrarErro(mensagem) {
-            console.error('Erro:', mensagem);
+            this.$notify({
+                type: 'danger',
+                message: mensagem,
+                icon: 'tim-icons icon-alert-circle-exc',
+                horizontalAlign: 'right',
+                verticalAlign: 'top'
+            });
         }
     },
     mounted() {
