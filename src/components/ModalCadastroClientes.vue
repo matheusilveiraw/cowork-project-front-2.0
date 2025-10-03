@@ -113,11 +113,13 @@ export default {
   watch: {
     clienteEditando: {
       handler(novoCliente) {
+        // console.log('Cliente para edição:', novoCliente);
+        
         if (novoCliente) {
           this.cliente = {
             idCustomer: novoCliente.idCustomer,
-            nameCustomer: novoCliente.nameCustomer,
-            emailCustomer: novoCliente.emailCustomer,
+            nameCustomer: novoCliente.nameCustomer || "",
+            emailCustomer: novoCliente.emailCustomer || "",
             phoneCustomer: novoCliente.phoneCustomer || "",
             addressCustomer: novoCliente.addressCustomer || ""
           };
@@ -141,78 +143,108 @@ export default {
   },
   methods: {
     async salvarCliente() {
-      this.loading = true;
-      this.loadingMessage = this.clienteEditando ? "Atualizando cliente..." : "Salvando cliente...";
-      this.showSuccessAlert = false;
-      this.showErrorAlert = false;
+        this.loading = true;
+        this.loadingMessage = this.clienteEditando ? "Atualizando cliente..." : "Salvando cliente...";
+        this.showSuccessAlert = false;
+        this.showErrorAlert = false;
 
-      try {
-        let response;
-        let clienteId;
+        // console.log('=== DEBUG UPDATE ===');
+        // console.log('Cliente editando:', this.clienteEditando);
+        // console.log('Dados do formulário:', this.cliente);
+        // console.log('ID do cliente:', this.clienteEditando?.idCustomer);
 
-        if (this.clienteEditando) {
-          clienteId = this.clienteEditando.idCustomer || this.cliente.idCustomer;
+        try {
+            let response;
+            let clienteId;
 
-          if (!clienteId) {
-            throw new Error('ID do cliente não encontrado para edição');
-          }
+            const dadosParaEnvio = {
+            nameCustomer: this.cliente.nameCustomer.trim(),
+            emailCustomer: this.cliente.emailCustomer.trim(),
+            phoneCustomer: this.cliente.phoneCustomer ? this.cliente.phoneCustomer.trim() : null,
+            addressCustomer: this.cliente.addressCustomer ? this.cliente.addressCustomer.trim() : null
+            };
 
-          response = await axios.put(
-            `http://localhost/projetos/cowork-project-back/public/customers/${clienteId}`,
-            this.cliente,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              timeout: 10000
+            // console.log('Dados sendo enviados:', dadosParaEnvio);
+            // console.log('Editando cliente ID:', this.clienteEditando?.idCustomer);
+
+            if (this.clienteEditando) {
+            clienteId = this.clienteEditando.idCustomer;
+
+            if (!clienteId) {
+                throw new Error('ID do cliente não encontrado para edição');
             }
-          );
-          this.mensagemSucesso = "Cliente atualizado com sucesso!";
-        } else {
-          response = await axios.post(
-            "http://localhost/projetos/cowork-project-back/public/customers",
-            this.cliente,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              timeout: 10000
+
+            // PUT para atualização
+            response = await axios.put(
+                `http://localhost/projetos/cowork-project-back/public/customers/${clienteId}`,
+                dadosParaEnvio,
+                {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                timeout: 10000
+                }
+            );
+            this.mensagemSucesso = "Cliente atualizado com sucesso!";
+            } else {
+            // POST para criação
+            response = await axios.post(
+                "http://localhost/projetos/cowork-project-back/public/customers",
+                dadosParaEnvio,
+                {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                timeout: 10000
+                }
+            );
+            this.mensagemSucesso = "Cliente salvo com sucesso!";
             }
-          );
-          this.mensagemSucesso = "Cliente salvo com sucesso!";
-        }
 
-        this.showSuccessAlert = true;
-        this.fecharModal();
+            // console.log('Resposta da API:', response.data);
 
-        setTimeout(() => {
-          this.showSuccessAlert = false;
-        }, 3000);
+            this.showSuccessAlert = true;
+            
+            setTimeout(() => {
+            this.fecharModal();
+            }, 1500);
 
-        this.$emit('cliente-salvo');
+            this.$emit('cliente-salvo');
 
-      } catch (error) {
-        console.error('Erro completo:', error);
+        } catch (error) {
+            // console.error('Erro completo:', error);
+            // console.error('Resposta do erro:', error.response);
 
-        if (error.response) {
-          const status = error.response.status;
-          const message = error.response.data.message || 'Erro desconhecido';
+            if (error.response) {
+                const status = error.response.status;
+                const errorData = error.response.data;
 
-          if (status === 409) {
-            this.errorMessage = 'Já existe um cliente com este email. Use outro email.';
-          } else if (status === 400) {
-            this.errorMessage = 'Dados inválidos. Verifique os campos preenchidos.';
-          } else {
-            this.errorMessage = `Erro ao ${this.clienteEditando ? 'atualizar' : 'salvar'} cliente: ` + message;
-          }
-        } else if (error.request) {
-          this.errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão.';
-        } else {
-          this.errorMessage = 'Erro: ' + error.message;
-        }
+                // console.log('Dados do erro:', errorData);
 
-        this.showErrorAlert = true;
+                if (status === 400) {
+                    if (errorData.errors) {
+                        const erros = Object.values(errorData.errors).join(', ');
+                        this.errorMessage = `Erro de validação: ${erros}`;
+                    } else if (errorData.error) {
+                        this.errorMessage = errorData.error;
+                    } else {
+                        this.errorMessage = 'Dados inválidos. Verifique os campos preenchidos.';
+                    }
+                } else if (status === 409) {
+                    this.errorMessage = errorData.error || 'Já existe um cliente com este email';
+                } else if (status === 404) {
+                    this.errorMessage = 'Cliente não encontrado';
+                } else {
+                    this.errorMessage = `Erro ao ${this.clienteEditando ? 'atualizar' : 'salvar'} cliente: ` + 
+                                    (errorData.error || errorData.message || 'Erro desconhecido');
+                }
+            } else if (error.request) {
+                this.errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão.';
+            } else {
+                this.errorMessage = 'Erro: ' + error.message;
+            }
 
+            this.showErrorAlert = true;
       } finally {
         this.loading = false;
       }

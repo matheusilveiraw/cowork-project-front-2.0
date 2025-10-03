@@ -168,7 +168,14 @@ export default {
         },
 
         abrirModalEdicao(cliente) {
-            this.clienteEditando = cliente;
+            console.log('Abrindo edição do cliente:', cliente);
+            this.clienteEditando = {
+                idCustomer: cliente.idCustomer,
+                nameCustomer: cliente.nameCustomer,
+                emailCustomer: cliente.emailCustomer,
+                phoneCustomer: cliente.phoneCustomer,
+                addressCustomer: cliente.addressCustomer
+            };
             this.abrirModal = true;
         },
 
