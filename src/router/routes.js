@@ -1,5 +1,6 @@
 //ESSA É IMPORTANTE PARA O MENU DA SIDE BAR
 //indica aonde fica o arquivo das rotas e 
+//criar página só mexer aqui
 
 import DashboardLayout from "@/layout/dashboard/DashboardLayout.vue";
 // GeneralViews
@@ -21,6 +22,9 @@ const TableList = () =>
   import(/* webpackChunkName: "common" */ "@/pages/TableList.vue");
 const Mesas = () =>
   import(/* webpackChunkName: "common" */ "@/pages/Mesas.vue");
+
+const Clientes = () =>
+  import(/* webpackChunkName: "common" */ "@/pages/Clientes.vue");
 
 const routes = [
   {
@@ -67,6 +71,11 @@ const routes = [
         path: "mesas",
         name: "mesas",
         component: Mesas,
+      },
+      {
+        path: "clientes",
+        name: "clientes",
+        component: Clientes,
       }
     ],
   },
