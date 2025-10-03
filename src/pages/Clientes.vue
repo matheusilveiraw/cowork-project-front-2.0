@@ -94,26 +94,25 @@
             </div>
         </div>
 
-        <!-- Modal placeholder para futuro uso -->
-        <!-- <ModalCadastroClientes 
-      :show="abrirModal" 
-      :cliente-editando="clienteEditando" 
-      @close="fecharModal"
-      @cliente-salvo="buscarClientes" 
-    /> -->
+        <ModalCadastroClientes 
+            :show="abrirModal" 
+            :cliente-editando="clienteEditando" 
+            @close="fecharModal"
+            @cliente-salvo="buscarClientes" 
+        />
     </div>
 </template>
 
 <script>
 import axios from "axios";
-// import ModalCadastroClientes from "@/components/ModalCadastroClientes.vue"; // Para uso futuro
+import ModalCadastroClientes from "@/components/ModalCadastroClientes.vue";
 import Swal from 'sweetalert2';
 
 export default {
     name: "Clientes",
-    // components: {
-    //   ModalCadastroClientes // Para uso futuro
-    // },
+    components: {
+        ModalCadastroClientes
+    },
     data() {
         return {
             abrirModal: false,
@@ -125,24 +124,20 @@ export default {
         };
     },
     computed: {
-        // Clientes da página atual
         clientesPagina() {
             const inicio = (this.paginaAtual - 1) * this.clientesPorPagina;
             const fim = inicio + this.clientesPorPagina;
             return this.clientes.slice(inicio, fim);
         },
         
-        // Total de páginas
         totalPaginas() {
             return Math.ceil(this.clientes.length / this.clientesPorPagina);
         },
         
-        // Índice do primeiro cliente da página
         inicio() {
             return (this.paginaAtual - 1) * this.clientesPorPagina;
         },
         
-        // Índice do último cliente da página
         fim() {
             const fimCalculado = this.inicio + this.clientesPorPagina;
             return fimCalculado > this.clientes.length ? this.clientes.length : fimCalculado;
@@ -157,7 +152,6 @@ export default {
                 );
 
                 this.clientes = response.data.data || response.data || [];
-                // Reseta para a primeira página após carregar
                 this.paginaAtual = 1;
 
             } catch (error) {
@@ -169,15 +163,13 @@ export default {
         },
 
         abrirModalCadastro() {
-            console.log('Abrir modal de cadastro - funcionalidade futura');
-            // this.clienteEditando = null;
-            // this.abrirModal = true;
+            this.clienteEditando = null;
+            this.abrirModal = true;
         },
 
         abrirModalEdicao(cliente) {
-            console.log('Abrir modal de edição - funcionalidade futura', cliente);
-            // this.clienteEditando = cliente;
-            // this.abrirModal = true;
+            this.clienteEditando = cliente;
+            this.abrirModal = true;
         },
 
         async confirmarExclusao(cliente) {
@@ -232,7 +224,11 @@ export default {
             }
         },
 
-        // Métodos de paginação
+        fecharModal() {
+            this.abrirModal = false;
+            this.clienteEditando = null;
+        },
+
         proximaPagina() {
             if (this.paginaAtual < this.totalPaginas) {
                 this.paginaAtual++;
@@ -310,7 +306,6 @@ export default {
     margin: 0 2px;
 }
 
-/* Estilos da paginação */
 .pagination-simple {
     display: flex;
     align-items: center;
