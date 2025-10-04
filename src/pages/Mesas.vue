@@ -193,16 +193,18 @@ export default {
       this.mesaSelecionadaAluguel = null;
     },
 
-    onAluguelSalvo() {
-      this.buscarMesas();
-      Swal.fire({
-        title: 'Sucesso!',
-        text: 'Mesa alugada com sucesso.',
-        icon: 'success',
-        timer: 2000,
-        showConfirmButton: false
-      });
-    },
+  onAluguelSalvo(dadosAluguel) {
+    
+    this.buscarMesas();
+    
+    Swal.fire({
+      title: 'Sucesso!',
+      text: 'Mesa alugada com sucesso.',
+      icon: 'success',
+      timer: 3000,
+      showConfirmButton: false
+    });
+  },
 
     mostrarErro(mensagem) {
       this.$notify({

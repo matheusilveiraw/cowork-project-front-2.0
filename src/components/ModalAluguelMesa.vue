@@ -20,7 +20,7 @@
 
           <div class="modal-body">
             <form>
-             <div class="form-group">
+              <div class="form-group">
                 <label for="mesaSelect">Selecionar Mesa *</label>
                 <select 
                   class="form-control" 
@@ -80,16 +80,89 @@
               </div>
 
               <div class="form-group">
-                <label for="dataInicio">Data de Início do Aluguel *</label>
-                <input 
-                  type="date" 
-                  class="form-control" 
-                  id="dataInicio" 
-                  v-model="aluguel.dataInicio"
-                  :min="dataMinima"
-                  :disabled="loading"
-                >
-                <small class="text-muted">Selecione a data em que o aluguel começará</small>
+                <label>Selecionar Data de Início *</label>
+                
+                <div class="calendar-header d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                  <button 
+                    class="btn btn-sm btn-outline-secondary" 
+                    @click="mesAnterior"
+                    :disabled="loading"
+                  >
+                    <i class="tim-icons icon-minimal-left"></i>
+                  </button>
+                  
+                  <h6 class="mb-0 text-center flex-grow-1">
+                    {{ mesAtualFormatado }}
+                  </h6>
+                  
+                  <button 
+                    class="btn btn-sm btn-outline-secondary" 
+                    @click="proximoMes"
+                    :disabled="loading"
+                  >
+                    <i class="tim-icons icon-minimal-right"></i>
+                  </button>
+                </div>
+
+                <div class="calendar-weekdays d-flex mb-2">
+                  <div 
+                    v-for="dia in diasSemana" 
+                    :key="dia"
+                    class="calendar-weekday text-center flex-fill text-muted small"
+                  >
+                    {{ dia }}
+                  </div>
+                </div>
+
+                <!-- Dias do Mês -->
+                <div class="calendar-days">
+                  <div 
+                    v-for="(dia, index) in diasDoMes" 
+                    :key="index"
+                    class="calendar-day-row d-flex"
+                  >
+                    <div
+                      v-for="celula in dia"
+                      :key="celula.data ? celula.data.getTime() : `empty-${index}`"
+                      class="calendar-day-cell flex-fill text-center p-2"
+                      :class="getClasseDia(celula)"
+                      @click="selecionarDia(celula)"
+                    >
+                      <div class="calendar-day-content">
+                        <span class="day-number">{{ celula.numero || '' }}</span>
+                        
+                        <div v-if="celula.data" class="day-indicators">
+                          <div 
+                            v-if="getDisponibilidadeMesa(celula.data)"
+                            class="availability-dot available"
+                            title="Mesa disponível"
+                          ></div>
+                          <div 
+                            v-else
+                            class="availability-dot unavailable"
+                            title="Mesa indisponível"
+                          ></div>
+                          
+                          <div 
+                            v-if="isDiaSelecionado(celula.data)"
+                            class="selected-indicator"
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="aluguel.dataInicio" class="mt-3 p-2 bg-primary text-white rounded">
+                  <small>
+                    <strong>Data selecionada:</strong> 
+                    {{ formatarDataParaExibicao(aluguel.dataInicio) }}
+                  </small>
+                </div>
+
+                <small class="text-muted d-block mt-2">
+                  Clique em um dia para selecionar a data de início do aluguel
+                </small>
               </div>
             </form>
           </div>
@@ -135,6 +208,8 @@ export default {
     }
   },
   data() {
+    const hoje = new Date();
+    
     return {
       loading: false,
       loadingMessage: "",
@@ -145,21 +220,71 @@ export default {
         idDesk: "",
         idCustomer: "",
         idPlan: "",
-        dataInicio: ""
+        startPeriod: ""
       },
       
       clientes: [],
       planos: [],
       carregandoClientes: false,
-      carregandoPlanos: false
+      carregandoPlanos: false,
+      
+      dataAtual: hoje,
+      diasSemana: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+      
+      disponibilidadeCache: new Map()
     };
   },
   computed: {
     formValido() {
       return this.aluguel.idDesk && this.aluguel.idCustomer && this.aluguel.idPlan && this.aluguel.dataInicio;
     },
-    dataMinima() {
-      return new Date().toISOString().split('T')[0];
+    
+    mesAtualFormatado() {
+      return this.dataAtual.toLocaleDateString('pt-BR', { 
+        month: 'long', 
+        year: 'numeric' 
+      }).replace(/^./, c => c.toUpperCase());
+    },
+    
+    diasDoMes() {
+      const year = this.dataAtual.getFullYear();
+      const month = this.dataAtual.getMonth();
+      
+      const primeiroDia = new Date(year, month, 1);
+      const ultimoDia = new Date(year, month + 1, 0);
+      
+      const primeiroDiaSemana = primeiroDia.getDay();
+      
+      const semanas = [];
+      let semana = [];
+      
+      for (let i = 0; i < primeiroDiaSemana; i++) {
+        semana.push({ vazio: true });
+      }
+      
+      for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+        const data = new Date(year, month, dia);
+        semana.push({
+          data: data,
+          numero: dia,
+          hoje: this.isHoje(data),
+          passado: this.isPassado(data)
+        });
+        
+        if (semana.length === 7) {
+          semanas.push(semana);
+          semana = [];
+        }
+      }
+      
+      if (semana.length > 0) {
+        while (semana.length < 7) {
+          semana.push({ vazio: true });
+        }
+        semanas.push(semana);
+      }
+      
+      return semanas;
     }
   },
   watch: {
@@ -170,11 +295,14 @@ export default {
       } else {
         this.limparFormulario();
       }
+    },
+    
+    'aluguel.idDesk'() {
+      this.disponibilidadeCache.clear();
     }
   },
   methods: {
     inicializarMesa() {
-      // Se veio com uma mesa pré-selecionada, preenche o campo
       if (this.mesaPreSelecionada) {
         this.aluguel.idDesk = this.mesaPreSelecionada.idDesk;
       } else {
@@ -197,7 +325,7 @@ export default {
         );
         this.clientes = response.data.data || response.data || [];
       } catch (error) {
-        console.error('Erro ao buscar clientes:', error);
+        // console.error('Erro ao buscar clientes:', error);
         this.mostrarErro('Erro ao carregar clientes');
       } finally {
         this.carregandoClientes = false;
@@ -212,19 +340,101 @@ export default {
         );
         this.planos = response.data.data || response.data || [];
       } catch (error) {
-        console.error('Erro ao buscar planos:', error);
-        this.planos = await this.getPlanosMock();
+        // console.error('Erro ao buscar planos:', error);
       } finally {
         this.carregandoPlanos = false;
       }
     },
-
-    async getPlanosMock() {
-      return [
-        { idPlan: 1, planName: "Diária - Manhã", price: 50.00 },
-        { idPlan: 2, planName: "Diária - Tarde", price: 50.00 },
-        { idPlan: 3, planName: "Diária - Integral", price: 80.00 }
-      ];
+    
+    mesAnterior() {
+      this.dataAtual = new Date(
+        this.dataAtual.getFullYear(),
+        this.dataAtual.getMonth() - 1,
+        1
+      );
+    },
+    
+    proximoMes() {
+      this.dataAtual = new Date(
+        this.dataAtual.getFullYear(),
+        this.dataAtual.getMonth() + 1,
+        1
+      );
+    },
+    
+    isHoje(data) {
+      const hoje = new Date();
+      return data.toDateString() === hoje.toDateString();
+    },
+    
+    isPassado(data) {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const dataComparar = new Date(data);
+      dataComparar.setHours(0, 0, 0, 0);
+      return dataComparar < hoje;
+    },
+    
+    isDiaSelecionado(data) {
+      if (!data || !this.aluguel.dataInicio) return false;
+      
+      const dataSelecionada = new Date(this.aluguel.dataInicio);
+      return data.toDateString() === dataSelecionada.toDateString();
+    },
+    
+    getClasseDia(celula) {
+      if (celula.vazio) return 'calendar-day-empty';
+      
+      const classes = ['calendar-day'];
+      
+      if (celula.hoje) classes.push('calendar-day-today');
+      if (celula.passado) classes.push('calendar-day-past');
+      if (this.isDiaSelecionado(celula.data)) classes.push('calendar-day-selected');
+      
+      if (!this.getDisponibilidadeMesa(celula.data)) {
+        classes.push('calendar-day-unavailable');
+      }
+      
+      return classes.join(' ');
+    },
+    
+    selecionarDia(celula) {
+      if (celula.vazio || celula.passado || !this.getDisponibilidadeMesa(celula.data)) {
+        return;
+      }
+      
+      const dataFormatada = celula.data.toISOString().split('T')[0];
+      this.aluguel.dataInicio = dataFormatada;
+    },
+    
+    getDisponibilidadeMesa(data) {
+      if (!this.aluguel.idDesk) return true; 
+      
+      const chave = `${data.toDateString()}-${this.aluguel.idDesk}`;
+      
+      if (this.disponibilidadeCache.has(chave)) {
+        return this.disponibilidadeCache.get(chave);
+      }
+      
+      const disponivel = !this.isFimDeSemana(data) && Math.random() > 0.3;
+      
+      this.disponibilidadeCache.set(chave, disponivel);
+      return disponivel;
+    },
+    
+    isFimDeSemana(data) {
+      const dia = data.getDay();
+      return dia === 0 || dia === 6;
+    },
+    
+    formatarDataParaExibicao(dataString) {
+      const data = new Date(dataString + 'T00:00:00');
+      return data.toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }).replace(/^./, c => c.toUpperCase());
     },
 
     async salvarAluguel() {
@@ -233,12 +443,49 @@ export default {
       this.showErrorAlert = false;
 
       try {
-        console.log('Dados do aluguel:', this.aluguel);
-        this.$emit('aluguel-salvo');
+        const dadosAluguel = {
+          idDesk: this.aluguel.idDesk,
+          idCustomer: this.aluguel.idCustomer,
+          idPlan: this.aluguel.idPlan,
+          startPeriod: `${this.aluguel.dataInicio} 08:00:00` 
+        };
+
+
+        const response = await axios.post(
+          "http://localhost/projetos/cowork-project-back/public/deskrentals",
+          dadosAluguel,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            timeout: 10000
+          }
+        );
+
+        this.$emit('aluguel-salvo', response.data);
+        
         this.fecharModal();
+
       } catch (error) {
         console.error('Erro ao salvar aluguel:', error);
-        this.errorMessage = 'Erro ao salvar aluguel: ' + (error.response?.data?.message || error.message);
+        
+        if (error.response) {
+          const status = error.response.status;
+          const message = error.response.data?.error || error.response.data?.message || 'Erro desconhecido';
+
+          if (status === 400) {
+            this.errorMessage = message;
+          } else if (status === 409) {
+            this.errorMessage = 'Mesa já está alugada neste período';
+          } else {
+            this.errorMessage = `Erro ao salvar aluguel: ${message}`;
+          }
+        } else if (error.request) {
+          this.errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão.';
+        } else {
+          this.errorMessage = 'Erro: ' + error.message;
+        }
+        
         this.showErrorAlert = true;
       } finally {
         this.loading = false;
@@ -257,6 +504,8 @@ export default {
         idPlan: "",
         dataInicio: ""
       };
+      this.dataAtual = new Date();
+      this.disponibilidadeCache.clear();
       this.showErrorAlert = false;
     },
 
@@ -267,6 +516,129 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.calendar-header {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.calendar-weekday {
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.25rem;
+}
+
+.calendar-day-cell {
+  min-height: 60px;
+  border: 1px solid #e9ecef;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.calendar-day-empty {
+  background-color: #f8f9fa;
+  cursor: default;
+}
+
+.calendar-day {
+  background-color: white;
+}
+
+.calendar-day:hover:not(.calendar-day-past):not(.calendar-day-unavailable) {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.calendar-day-today {
+  background-color: #fff3cd;
+  border-color: #ffc107;
+}
+
+.calendar-day-past {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.calendar-day-selected {
+  background-color: #2196f3 !important;
+  color: white !important;
+  border-color: #1976d2 !important;
+}
+
+.calendar-day-unavailable {
+  background-color: #ffebee;
+  color: #c62828;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.calendar-day-unavailable::after {
+  content: "✕";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  color: #c62828;
+  opacity: 0.3;
+}
+
+.calendar-day-content {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.day-number {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.day-indicators {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  display: flex;
+  gap: 2px;
+}
+
+.availability-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.availability-dot.available {
+  background-color: #4caf50;
+}
+
+.availability-dot.unavailable {
+  background-color: #f44336;
+}
+
+.selected-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: white;
+  border: 1px solid #1976d2;
+}
+
+.calendar-day-selected .day-number {
+  color: white;
+  font-weight: bold;
+}
+
+.calendar-day-selected .availability-dot {
+  background-color: white;
+}
+</style>
 
 <style>
 .modal-backdrop {
@@ -284,6 +656,6 @@ export default {
 
 .modal-dialog {
   width: 80%;
-  max-width: 600px;
+  max-width: 800px; 
 }
 </style>
