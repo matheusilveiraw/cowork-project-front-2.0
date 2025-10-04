@@ -10,9 +10,8 @@
           <button class="btn btn-primary mr-2" @click="abrirModalCadastro">
             Nova Mesa
           </button>
-
-          <button class="btn btn-secondary">
-            Alterar Visualização mesa
+          <button class="btn btn-secondary mr-2" @click="abrirModalAluguelGeral">
+            Alugar Mesa
           </button>
         </div>
       </div>
@@ -27,7 +26,7 @@
         </div>
 
         <div v-else class="row">
-          <div class="col-md-6 mb-3" v-for="mesa in mesas" :key="mesa.id">
+          <div class="col-md-6 mb-3" v-for="mesa in mesas" :key="mesa.idDesk">
             <div class="mesa-box p-3">
               <div class="d-flex justify-content-between align-items-start">
                 <h1 class="mb-0">
@@ -36,6 +35,9 @@
                   </strong>
                 </h1>
                 <div>
+                  <button class="btn btn-sm btn-outline-success mr-1" @click="abrirModalAluguel(mesa)" title="Alugar mesa">
+                    <i class="tim-icons icon-tag"></i>
+                  </button>
                   <button class="btn btn-sm btn-outline-primary mr-1" @click="abrirModalEdicao(mesa)" title="Editar mesa">
                     <i class="tim-icons icon-pencil"></i>
                   </button>
@@ -53,28 +55,40 @@
     </div>
 
     <ModalCadastroMesas 
-      :show="abrirModal" 
+      :show="abrirModalCadastroMesa" 
       :mesa-editando="mesaEditando" 
-      @close="fecharModal"
+      @close="fecharModalCadastro"
       @mesa-salva="buscarMesas" 
+    />
+
+    <ModalAluguelMesa
+      :show="abrirModalAluguelMesa"
+      :mesa-pre-selecionada="mesaSelecionadaAluguel"
+      :mesas="mesas"
+      @close="fecharModalAluguel"
+      @aluguel-salvo="onAluguelSalvo"
     />
   </div>
 </template>
 
 <script>
 import ModalCadastroMesas from "@/components/ModalCadastroMesas.vue";
+import ModalAluguelMesa from "@/components/ModalAluguelMesa.vue";
 import axios from "axios";
 import Swal from 'sweetalert2';
 
 export default {
   name: "Mesas",
   components: {
-    ModalCadastroMesas
+    ModalCadastroMesas,
+    ModalAluguelMesa
   },
   data() {
     return {
-      abrirModal: false,
+      abrirModalCadastroMesa: false,
+      abrirModalAluguelMesa: false,
       mesaEditando: null,
+      mesaSelecionadaAluguel: null,
       mesas: [],
       loading: false
     };
@@ -86,9 +100,7 @@ export default {
         const response = await axios.get(
           "http://localhost/projetos/cowork-project-back/public/desks"
         );
-
         this.mesas = response.data.data || response.data || [];
-
       } catch (error) {
         console.error('Erro ao buscar mesas:', error);
         this.mostrarErro('Erro ao carregar mesas: ' + (error.response?.data?.message || error.message));
@@ -99,7 +111,7 @@ export default {
 
     abrirModalCadastro() {
       this.mesaEditando = null;
-      this.abrirModal = true;
+      this.abrirModalCadastroMesa = true;
     },
 
     abrirModalEdicao(mesa) {
@@ -108,7 +120,23 @@ export default {
         deskNumber: mesa.deskNumber,
         deskName: mesa.deskName
       };
-      this.abrirModal = true;
+      this.abrirModalCadastroMesa = true;
+    },
+
+    // Abre modal de aluguel COM mesa específica pré-selecionada
+    abrirModalAluguel(mesa) {
+      this.mesaSelecionadaAluguel = {
+        idDesk: mesa.idDesk,
+        deskNumber: mesa.deskNumber,
+        deskName: mesa.deskName
+      };
+      this.abrirModalAluguelMesa = true;
+    },
+
+    // Abre modal de aluguel SEM mesa pré-selecionada
+    abrirModalAluguelGeral() {
+      this.mesaSelecionadaAluguel = null;
+      this.abrirModalAluguelMesa = true;
     },
 
     async confirmarExclusao(mesa) {
@@ -144,7 +172,6 @@ export default {
         });
 
         this.buscarMesas();
-
       } catch (error) {
         console.error('Erro ao excluir mesa:', error);
         Swal.fire({
@@ -156,9 +183,25 @@ export default {
       }
     },
 
-    fecharModal() {
-      this.abrirModal = false;
+    fecharModalCadastro() {
+      this.abrirModalCadastroMesa = false;
       this.mesaEditando = null;
+    },
+
+    fecharModalAluguel() {
+      this.abrirModalAluguelMesa = false;
+      this.mesaSelecionadaAluguel = null;
+    },
+
+    onAluguelSalvo() {
+      this.buscarMesas();
+      Swal.fire({
+        title: 'Sucesso!',
+        text: 'Mesa alugada com sucesso.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
     },
 
     mostrarErro(mensagem) {
